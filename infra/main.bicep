@@ -67,6 +67,11 @@ module containerApps './core/host/container-apps.bicep' = {
   }
 }
 
+resource keyVaultSecrets 'Microsoft.KeyVault/vaults@2019-09-01' existing = {
+  name: keyVaultName
+  scope: rg
+}
+
 // Web frontend
 module web './app/web.bicep' = {
   name: 'web'
@@ -82,8 +87,8 @@ module web './app/web.bicep' = {
     databaseName: postgres.outputs.DATABASE_NAME
     databaseServerHost: postgres.outputs.SERVER_HOST
     databaseUsername: databaseUsername
-    databasePassword: databasePassword
-    sessionSecret: sessionSecret
+    databasePassword: keyVaultSecrets.getSecret('databasePassword')
+    sessionSecret: keyVaultSecrets.getSecret('sessionSecret')
   }
 }
 
@@ -93,7 +98,7 @@ module postgres './app/db.bicep' = {
   scope: rg
   params: {
     administratorLogin: databaseUsername
-    administratorLoginPassword: databasePassword
+    administratorLoginPassword: keyVaultSecrets.getSecret('databasePassword')
     location: location
     serverName: !empty(databaseServerName) ? databaseServerName : '${abbrs.dBforPostgreSQLServers}db-${resourceToken}'
     keyVaultName: keyVaultName

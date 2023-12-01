@@ -12,17 +12,49 @@ param keyVaultName string = ''
 param managedIdentity bool = !empty(keyVaultName)
 param targetPort int = 80
 
+@description('The secrets required for the container')
+param secrets array = []
+
 @description('CPU cores allocated to a single container instance, e.g. 0.5')
 param containerCpuCoreCount string = '0.5'
 
 @description('Memory allocated to a single container instance, e.g. 1Gi')
 param containerMemory string = '1.0Gi'
 
+@description('The name of the user-assigned identity')
+param identityName string = ''
+
+@description('The type of identity for the resource')
+@allowed([ 'None', 'SystemAssigned', 'UserAssigned' ])
+param identityType string = 'None'
+
+resource userIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = if (!empty(identityName)) {
+  name: identityName
+}
+
+// Private registry support requires both an ACR name and a User Assigned managed identity
+var usePrivateRegistry = !empty(identityName) && !empty(containerRegistryName)
+
+// Automatically set to `UserAssigned` when an `identityName` has been set
+var normalizedIdentityType = !empty(identityName) ? 'UserAssigned' : identityType
+
+module containerRegistryAccess '../security/registry-access.bicep' = if (usePrivateRegistry) {
+  name: '${deployment().name}-registry-access'
+  params: {
+    containerRegistryName: containerRegistryName
+    principalId: usePrivateRegistry ? userIdentity.properties.principalId : ''
+  }
+}
+
 resource app 'Microsoft.App/containerApps@2022-03-01' = {
   name: name
   location: location
   tags: tags
-  identity: { type: managedIdentity ? 'SystemAssigned' : 'None' }
+  dependsOn: usePrivateRegistry ? [ containerRegistryAccess ] : []
+  identity: {
+    type: normalizedIdentityType
+    userAssignedIdentities: !empty(identityName) && normalizedIdentityType == 'UserAssigned' ? { '${userIdentity.id}': {} } : null
+  }
   properties: {
     managedEnvironmentId: containerAppsEnvironment.id
     configuration: {
@@ -32,12 +64,7 @@ resource app 'Microsoft.App/containerApps@2022-03-01' = {
         targetPort: targetPort
         transport: 'auto'
       }
-      secrets: [
-        {
-          name: 'registry-password'
-          value: containerRegistry.listCredentials().passwords[0].value
-        }
-      ]
+      secrets: secrets
       registries: [
         {
           server: '${containerRegistry.name}.azurecr.io'

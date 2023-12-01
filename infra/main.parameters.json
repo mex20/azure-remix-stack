@@ -18,10 +18,10 @@
       "value": "${SERVICE_WEB_IMAGE_NAME}"
     },
     "databasePassword": {
-      "value": "$(secretOrRandomPassword)"
+      "value": "GEN-PASSWORD"
     },
     "sessionSecret": {
-      "value": "$(secretOrRandomPassword)"
+      "value": "GEN-PASSWORD"
     }
   }
 }
