@@ -14,6 +14,7 @@ param virtualNetworkExternalId string = ''
 param subnetName string = ''
 param privateDnsZoneArmResourceId string = ''
 param databaseName string
+param keyVaultName string
 
 resource db 'Microsoft.DBforPostgreSQL/flexibleServers@2022-01-20-preview' = {
   name: serverName
@@ -26,6 +27,7 @@ resource db 'Microsoft.DBforPostgreSQL/flexibleServers@2022-01-20-preview' = {
     version: version
     administratorLogin: administratorLogin
     administratorLoginPassword: administratorLoginPassword
+    
     network: {
       delegatedSubnetResourceId: (empty(virtualNetworkExternalId) ? json('null') : json('${virtualNetworkExternalId}/subnets/${subnetName}'))
       privateDnsZoneArmResourceId: (empty(virtualNetworkExternalId) ? json('null') : privateDnsZoneArmResourceId)
@@ -55,6 +57,19 @@ resource db 'Microsoft.DBforPostgreSQL/flexibleServers@2022-01-20-preview' = {
     }
   }
 }
+
+resource databasePassword 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
+  parent: keyVault
+  name: 'databasePassword'
+  properties: {
+    value: administratorLoginPassword
+  }
+}
+
+resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
+  name: keyVaultName
+}
+
 
 output SERVER_HOST string = db.properties.fullyQualifiedDomainName
 output DB_NAME string = databaseName

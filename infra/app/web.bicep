@@ -10,6 +10,7 @@ param serviceName string = 'web'
 param databaseServerHost string
 param databaseName string
 param databaseUsername string
+param keyVaultName string
 
 @secure()
 param databasePassword string
@@ -25,6 +26,7 @@ module app '../core/host/container-app.bicep' = {
     tags: union(tags, { 'azd-service-name': serviceName })
     containerAppsEnvironmentName: containerAppsEnvironmentName
     containerRegistryName: containerRegistryName
+    keyVaultName: keyVaultName
     env: [
       {
         name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'

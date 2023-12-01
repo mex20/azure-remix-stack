@@ -5,6 +5,7 @@ param administratorLoginPassword string
 param serviceName string = 'db'
 param databaseName string = 'remix'
 param serverName string
+param keyVaultName string
 
 module db '../core/database/postgres.bicep' = {
   name: '${serviceName}-remix'
@@ -14,6 +15,7 @@ module db '../core/database/postgres.bicep' = {
     location: location
     serverName: serverName
     databaseName: databaseName
+    keyVaultName: keyVaultName
   }
 }
 

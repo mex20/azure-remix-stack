@@ -17,6 +17,8 @@ param logAnalyticsName string = ''
 param resourceGroupName string = ''
 param webContainerAppName string = ''
 param databaseServerName string = ''
+param keyVaultName string = ''
+param principalId string = ''
 
 @description('The image name for the web service')
 param webImageName string = ''
@@ -76,6 +78,7 @@ module web './app/web.bicep' = {
     applicationInsightsName: monitoring.outputs.applicationInsightsName
     containerAppsEnvironmentName: containerApps.outputs.environmentName
     containerRegistryName: containerApps.outputs.registryName
+    keyVaultName: keyVault.outputs.name
     databaseName: postgres.outputs.DATABASE_NAME
     databaseServerHost: postgres.outputs.SERVER_HOST
     databaseUsername: databaseUsername
@@ -93,12 +96,26 @@ module postgres './app/db.bicep' = {
     administratorLoginPassword: databasePassword
     location: location
     serverName: !empty(databaseServerName) ? databaseServerName : '${abbrs.dBforPostgreSQLServers}db-${resourceToken}'
+    keyVaultName: keyVaultName
+  }
+}
+
+module keyVault './core/security/keyvault.bicep' = {
+  name: 'keyvault'
+  scope: rg
+  params: {
+    keyVaultName: !empty(keyVaultName) ? keyVaultName : '${abbrs.keyVaultVaults}${resourceToken}'
+    location: location
+    tags: tags
+    principalId: principalId
   }
 }
 
 // App outputs
 output APPLICATIONINSIGHTS_CONNECTION_STRING string = monitoring.outputs.applicationInsightsConnectionString
 output APPLICATIONINSIGHTS_NAME string = monitoring.outputs.applicationInsightsName
+output AZURE_KEY_VAULT_ENDPOINT string = keyVault.outputs.endpoint
+output AZURE_KEY_VAULT_NAME string = keyVault.outputs.name
 output AZURE_CONTAINER_ENVIRONMENT_NAME string = containerApps.outputs.environmentName
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerApps.outputs.registryLoginServer
 output AZURE_CONTAINER_REGISTRY_NAME string = containerApps.outputs.registryName
